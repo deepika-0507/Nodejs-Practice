@@ -1,9 +1,12 @@
 var mysql = require('mysql');
+const express = require('express')
+const app = express()
 
 var con = mysql.createConnection({
   host: "localhost",
-  user: "deepika-0507",
-  password: "deepika@1999"
+  user: "root",
+  password: "deepika@1999",
+  database:'mydb'
 });
 
 con.connect(function(err) {
@@ -53,3 +56,10 @@ con.connect(function(err) {
     console.log("deleted: " + result.affectedRows);
   });
 });
+
+
+
+app.listen('3003', ()=>{
+  console.log('starting');
+  
+})
