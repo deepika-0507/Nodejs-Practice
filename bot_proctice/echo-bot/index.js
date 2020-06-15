@@ -17,7 +17,8 @@ const { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = req
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
 
 // This bot's main dialog.
-const { ProactiveBot } = require('./proactiveBot');
+const { DialogBot } = require('./bots/dialogBot');
+const { UserProfileDialog } = require('./dialogs/userdialogs');
 
 const memoryStorage = new MemoryStorage();
 
@@ -64,8 +65,8 @@ const onTurnErrorHandler = async (context, error) => {
 adapter.onTurnError = onTurnErrorHandler;
 
 // Create the main dialog.
-const conversationReferences = {};
-const myBot = new ProactiveBot(conversationReferences);
+const dialog = new UserProfileDialog(userState);
+const myBot = new DialogBot(conversationState, userState, dialog);
 
 // Listen for incoming requests.
 server.post('/api/messages', (req, res) => {
@@ -96,18 +97,4 @@ server.on('upgrade', (req, socket, head) => {
 
 
 
-// Listen for incoming notifications and send proactive messages to users.
-server.get('/api/notify', async (req, res) => {
-    for (const conversationReference of Object.values(conversationReferences)) {
-        await adapter.continueConversation(conversationReference, async turnContext => {
-            // If you encounter permission-related errors when sending this message, see
-            // https://aka.ms/BotTrustServiceUrl
-            await turnContext.sendActivity('proactive hello');
-        });
-    }
 
-    res.setHeader('Content-Type', 'text/html');
-    res.writeHead(200);
-    res.write('<html><body><h1>Proactive messages have been sent.</h1></body></html>');
-    res.end();
-});
