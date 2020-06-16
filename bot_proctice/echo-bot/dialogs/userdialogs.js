@@ -14,6 +14,7 @@ const {
 const { Channels } = require('botbuilder-core');
 const { UserProfile } = require('../userProfile');
 
+const Users = require('../usermodel')
 const ATTACHMENT_PROMPT = 'ATTACHMENT_PROMPT';
 const CHOICE_PROMPT = 'CHOICE_PROMPT';
 const CONFIRM_PROMPT = 'CONFIRM_PROMPT';
@@ -93,7 +94,6 @@ class UserProfileDialog extends ComponentDialog {
             // User said "yes" so we will be prompting for the age.
             // WaterfallStep always finishes with the end of the Waterfall or with another dialog; here it is a Prompt Dialog.
             const promptOptions = { prompt: 'Please enter your age.', retryPrompt: 'The value entered must be greater than 0 and less than 150.' };
-
             return await step.prompt(NUMBER_PROMPT, promptOptions);
         } else {
             // User said "no" so we will skip the next step. Give -1 as the age.
@@ -140,6 +140,16 @@ class UserProfileDialog extends ComponentDialog {
             userProfile.name = step.values.name;
             userProfile.age = step.values.age;
             userProfile.picture = step.values.picture;
+
+            var data = new Users();
+            data.name =step.values.name;
+            data.age =step.values.age;
+            data.transport =step.values.transport;
+            data.save((err,docs)=>{
+                if(err) throw err;
+                console.log(docs)
+                console.log('added')
+            })
 
             let msg = `I have your mode of transport as ${ userProfile.transport } and your name as ${ userProfile.name }`;
             if (userProfile.age !== -1) {

@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+const mongoose = require('mongoose')
 
 const path = require('path');
 
@@ -12,6 +13,7 @@ const restify = require('restify');
 
 const { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = require('botbuilder');
 
+mongoose.connect("mongodb://localhost:27017/sampledata",{useNewUrlParser: true,useUnifiedTopology: true});
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
