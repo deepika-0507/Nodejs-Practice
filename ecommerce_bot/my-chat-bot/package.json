@@ -19,6 +19,7 @@
         "adaptivecards": "^1.2.6",
         "botbuilder": "~4.9.0",
         "botbuilder-dialogs": "^4.9.2",
+        "dotenv": "^8.2.0",
         "restify": "~8.5.1"
     },
     "devDependencies": {

@@ -1,26 +1,31 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 const { AttachmentLayoutTypes, CardFactory } = require('botbuilder');
-const { ChoicePrompt, ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog } = require('botbuilder-dialogs');
-const Login_card = require('../adaptivecards/login_card.json')
+const {  ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog, TextPrompt } = require('botbuilder-dialogs');
+const AdaptiveCard = require('../adaptivecards/login_card.json');
+const AdaptiveCard_signup = require('../adaptivecards/signup_card.json');
 
 
 const MAIN_WATERFALL_DIALOG = 'mainWaterfallDialog';
+const Account = 'NAME_PROMPT';
 
+class MainDialog extends ComponentDialog {
+    constructor() {
+        super('MainDialog');
 
+        // Define the main dialog and its related components.
+        this.addDialog(new TextPrompt(Account));
+        this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG, [
+            this.account.bind(this),
+            this.carddisplay.bind(this),
+            this.getdata.bind(this)
 
-class LoginDialog extends ComponentDialog {
-    constructor(){
-        super('LoginDialog');
+        ]));
 
-        this.addDialog(new ChoicePrompt('choice'));
-        this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG,[
-            this.CardChoice.bind(this),
-            this.DisplayCard.bind(this)
-        ]))
-
-
+        // The initial child Dialog to run.
+        this.initialDialogId = MAIN_WATERFALL_DIALOG;
     }
-
-
 
     /**
      * The run method handles the incoming activity (in the form of a TurnContext) and passes it through the dialog system.
@@ -40,68 +45,57 @@ class LoginDialog extends ComponentDialog {
     }
 
 
-    /**
-     * @param {WaterfallStepContext} stepContext
-    */
+    
 
-    async CardChoice(stepContext){
-        console.log('CardChoice Selection')
-
-        const options = {
-            prompt :'Do you have an account? Choose one',
-            retryPrompt :'Can you repeat again',
-            choices: this.getChoices()
-        };
-
-        return await stepContext.prompt('Choices', options)
+    async account(step){
+        console.log('prompt')
+        return await step.prompt(Account,'Do you have an account?');
     }
 
-    /**
-     * @param {WaterfallStepContext} stepContext
-    */
-
-    async DisplayCard(stepContext){
-        console.log('display of cards')
-
-        switch (stepContext.result.value){
-            case 'login':
-                await stepContext.context.sendactivity({attachments: this.login()})
+    async carddisplay(step){
+        console.log(step.result)
+        switch(step.result){
+            case 'yes':
+                await step.context.sendActivity({ attachments: [this.login()] });
                 break;
-            case 'signup':
-                await stepContext.context.sendactivity({attachments: this.signup()})
+            case 'no' :
+                await step.context.sendActivity({ attachments: [this.signup()] });
                 break;
             default:
-                await stepContext.context.sendactivity({attachments: this.signup()})
+                await step.context.sendActivity({ attachments: [this.signup()] });
                 break;
         }
-
-        await stepContext.context.sendactivity('Fill the details');
-
-        return await stepContext.endDialog();
+        console.log(step.Activity)
+        return await step.prompt(Account,'Data');
     }
 
-    getChoices(){
-        const options =[
-            {
-                value:'login',
-                synonyms: ['yes','signin']
-            },
-            {
-                values:'signup',
-                synonyms: ['no','register']
-            }
-        ]
-
-        return options;
+    async getdata(step){
+        console.log('getdata')
+        if(step.Activity.Value!=null){
+            console.log('activity',step.Activity.Value)
+        }
+        else{
+            console.log('no activity')
+        }
+        return await step.endDialog();
     }
 
-    login(){
-        return CardFactory.adaptiveCard(Login_card);
+
+  
+    // ======================================
+    // Helper functions used to create cards.
+    // ======================================
+
+    login() {
+        return CardFactory.adaptiveCard(AdaptiveCard);
+    }
+    signup() {
+        return CardFactory.adaptiveCard(AdaptiveCard_signup);
     }
 
-    signup(){
-        return CardFactory.adaptiveCard(Login_card);
-    }
+    
+
+    
 }
 
-module.exports.LoginDialog = LoginDialog
+module.exports.MainDialog = MainDialog;
