@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { AttachmentLayoutTypes, CardFactory,UniversalBot,ActionTypes,ActivityTypes, } = require('botbuilder');
-const {  ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog, TextPrompt, ConfirmPrompt } = require('botbuilder-dialogs');
+const { AttachmentLayoutTypes, CardFactory,UniversalBot,ActionTypes,ActivityTypes,dialog } = require('botbuilder');
+const {  ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog, TextPrompt, ConfirmPrompt, Dialog } = require('botbuilder-dialogs');
 const AdaptiveCard = require('../adaptivecards/login_card.json');
 const AdaptiveCard_signup = require('../adaptivecards/signup_card.json');
 const Products = require('../models/products');
@@ -75,11 +75,7 @@ class MainDialog extends ComponentDialog {
         return await step.prompt(confirm,`Welcome ${step.result} Do You have an account?`)
     }
 
-    /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {Object} step
-     */
+    
 
     async displayoptions(step){
         console.log('options')
@@ -102,7 +98,8 @@ class MainDialog extends ComponentDialog {
 
         reply.attachments = [card];
         console.log(reply)
-        return await step.context.sendActivity(reply);
+        await step.context.sendActivity(reply);
+        return Dialog.EndOfTurn;
     }
 
 
@@ -116,12 +113,18 @@ class MainDialog extends ComponentDialog {
 
 
     async displayproducts(step){
-        console.log(step.activity.text[0])
+        console.log(step.result)
         const reply = {type: ActivityTypes.Message};
 
-        const char_value = step.activity.text[0]
+        const char_value = step.result
         console.log(char_value);
-        return await step.context.sendActivity({ attachments: [this.products(char_value)] })
+        Products.find({type:char_value},function(err,docs){
+            if(err) throw err;
+            for(var i in docs){
+                await step.context.sendActivity({attachments: [this.card()] })
+            }
+        })
+        return Dialog.EndOfTurn;
     }
 
 
@@ -163,13 +166,16 @@ class MainDialog extends ComponentDialog {
     }
 
     products(char_value){
+        console.log('data')
+        console.log(char_value)
         Products.find({type:char_value},function(err,doc){
             if(err) throw err;
             console.log(doc)
-            console.log(doc[0])
-            CardFactory.heroCard(
-                'doc.name',
-                CardFactory.images([doc.path]),
+            console.log(doc[0].name)
+            console.log(doc[0]['name'])
+            return CardFactory.heroCard(+
+                'Bot',
+                CardFactory.images(['https://www.google.com/url?sa=i&url=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fdawn&psig=AOvVaw2MhJhoCJxYLXoaXdA4FltB&ust=1592921482084000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCJieqorNleoCFQAAAAAdAAAAABAI',]),
                 CardFactory.actions([
                     {
                         type: 'openUrl',
@@ -178,8 +184,23 @@ class MainDialog extends ComponentDialog {
                     }
                 ])
             )
+            
         })
 
+    }
+
+    card(){
+        return CardFactory.heroCard(
+            'Bot',
+            CardFactory.images(['https://www.google.com/url?sa=i&url=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fdawn&psig=AOvVaw2MhJhoCJxYLXoaXdA4FltB&ust=1592921482084000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCJieqorNleoCFQAAAAAdAAAAABAI',]),
+            CardFactory.actions([
+                {
+                    type: 'openUrl',
+                    title: 'view more',
+                    value: 'https://docs.microsoft.com/en-us/azure/bot-service/'
+                }
+            ])
+        )
     }
 
 
