@@ -17,8 +17,11 @@
         "type": "Action.Submit",
         "title": "Submit",
         "data": {
-          "prop1": true,
-          "prop2": []
+          "mstreams":{
+            "type":"iamback",
+            "value":"Text"
+          }
+          
         }
       }
     ]

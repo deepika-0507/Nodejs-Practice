@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 // index.js is used to setup and configure your bot
+const mongoose = require('mongoose')
 
 // Import required packages
 const path = require('path');
@@ -10,6 +11,8 @@ const restify = require('restify');
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
 const { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = require('botbuilder');
+
+mongoose.connect("mongodb://localhost:27017/sampledata",{useNewUrlParser: true,useUnifiedTopology: true});
 
 // This bot's main dialog.
 const { EcommerceBot } = require('./bot');
