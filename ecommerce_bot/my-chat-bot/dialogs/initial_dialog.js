@@ -6,11 +6,14 @@ const {  ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog, TextProm
 const AdaptiveCard = require('../adaptivecards/login_card.json');
 const AdaptiveCard_signup = require('../adaptivecards/signup_card.json');
 const Products = require('../models/products');
-
+const Verification = require('../adaptivecards/verification.json');
+var otpGenerator = require('otp-generator');
+var nodemailer = require('nodemailer');
 
 const MAIN_WATERFALL_DIALOG = 'WATERFALL_DIALOG';
 const Account = 'NAME_PROMPT';
 const confirm = 'CHOICE_PROMPT';
+var verification_code;
 
 class MainDialog extends ComponentDialog {
     constructor() {
@@ -23,12 +26,12 @@ class MainDialog extends ComponentDialog {
         this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG, [
             this.nameprompt.bind(this),
             this.welcome.bind(this),
+            this.confirmation.bind(this),
+            this.detailsusers.bind(this),
+            this.detailsverification.bind(this),
             this.displayoptions.bind(this),
             this.displayproducts.bind(this),
-            this.confirmation.bind(this),
             
-
-
 
         ]));
 
@@ -53,34 +56,93 @@ class MainDialog extends ComponentDialog {
         }
     }
 
-    /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {WaterfallStepContext} step
-     */
+
 
     async nameprompt(step){
         console.log('prompt')
         return await step.prompt(Account,'What is your name');
     }
 
-    /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {WaterfallStepContext} step
-     */
+    
 
     async welcome(step){
         console.log(step.result)
         return await step.prompt(confirm,`Welcome ${step.result} Do You have an account?`)
     }
 
+
+    async confirmation(step){
+        if(step.result){
+            await step.context.sendActivity({ attachments: [this.login()] });
+        }
+        else{
+           await step.context.sendActivity({ attachments: [this.signup()] });
+        }
+        return Dialog.EndOfTurn;
+    }
+
+    async detailsusers(step){
+        console.log(step.context._activity.value)
+        if(step.context._activity.value.name === 'Signup'){
+            verification_code=otpGenerator.generate(6, { upperCase: false, specialChars: false });
+            console.log(verification_code)
+            var transporter = nodemailer.createTransport({ service: "gmail", auth: { user: 'wandermate.help@gmail.com', pass: 'wandermate123' } });
+            var mailOptions = { from: 'wandermate.help@gmail.com', to: step.context._activity.value.email, subject: 'Account Verification Token',
+            html : `Hello,<br> Your Verification Code for email verification.<br><b>${verification_code}</b>`,}
+
+            transporter.sendMail(mailOptions, function (err) {
+                if (err) {
+                     console.log(err);
+                    }
+                 else{
+                     console.log('mail sent');
+                 }
+            });
+
+            await step.context.sendActivity({attachments:[this.verification()]});
+            console.log(step.context._activity.value)
+            return Dialog.EndOfTurn;
+            
+
+        }
+        else{
+            await step.prompt(Account,'Succesfully logged in')
+            return step.next();
+        }
+
+        
+
+    }
+
+    // async detailsverification(step){
+    //     console.log('prompt')
+    //     return await step.prompt(Account,'name');
+    // }
+
+    async detailsverification(step){
+        console.log(step.context)
+        if(step.context._activity.value.name==='verification'){
+            if(step.context._activity.value.code === verification_code){
+                await step.prompt(Account,'Succesfully Signed in')
+                return step.next();
+            }
+            else{
+                // await step.context.sendActivity({ attachments: [this.signup()] });
+                // return Dialog.EndOfTurn;
+                return await step.retryPrompt()
+            }
+        }
+        else{
+            return step.next()
+
+        }
+    }
+
     
 
     async displayoptions(step){
         console.log('options')
-        // await step.prompt(Account,'Options are')
-        // return await step.endDialog()
+        
 
         const reply = { type: ActivityTypes.Message };
 
@@ -97,20 +159,16 @@ class MainDialog extends ComponentDialog {
             buttons, { text: 'You can upload an image or select one of the following choices.' });
 
         reply.attachments = [card];
-        console.log(reply)
+        // console.log(reply)
         await step.context.sendActivity(reply);
         return Dialog.EndOfTurn;
     }
 
+    
 
 
 
-    /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {Object} step
-     */
-
+  
 
     async displayproducts(step){
         console.log(step.result)
@@ -118,37 +176,26 @@ class MainDialog extends ComponentDialog {
 
         const char_value = step.result
         console.log(char_value);
-        Products.find({type:char_value},function(err,docs){
+        var data=[];
+        await Products.find({type:char_value},function(err,docs){
             if(err) throw err;
-            for(var i in docs){
-                await step.context.sendActivity({attachments: [this.card()] })
-            }
+            data = docs;
+            
         })
+        console.log(data)
+        for(var i=0; i<= data.length-1 ;i++){
+            await step.context.sendActivity({attachments: [this.card(data[i])] })
+
+        }
         return Dialog.EndOfTurn;
     }
 
 
-        /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {WaterfallStepContext} step
-     */
+     
 
-    async confirmation(step){
-        if(step.result){
-            await step.context.sendActivity({ attachments: [this.login()] });
-        }
-        else{
-           await step.context.sendActivity({ attachments: [this.signup()] });
-        }
-        return await step.endDialog()
-    }
 
-    /**
-     * Send a Rich Card response to the user based on their choice.
-     * This method is only called when a valid prompt response is parsed from the user's response to the ChoicePrompt.
-     * @param {WaterfallStepContext} step
-     */
+
+    
 
     
 
@@ -162,37 +209,46 @@ class MainDialog extends ComponentDialog {
         return CardFactory.adaptiveCard(AdaptiveCard);
     }
     signup() {
-        return CardFactory.adaptiveCard(AdaptiveCard);
+        return CardFactory.adaptiveCard(AdaptiveCard_signup);
     }
 
-    products(char_value){
-        console.log('data')
-        console.log(char_value)
-        Products.find({type:char_value},function(err,doc){
-            if(err) throw err;
-            console.log(doc)
-            console.log(doc[0].name)
-            console.log(doc[0]['name'])
-            return CardFactory.heroCard(+
-                'Bot',
-                CardFactory.images(['https://www.google.com/url?sa=i&url=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fdawn&psig=AOvVaw2MhJhoCJxYLXoaXdA4FltB&ust=1592921482084000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCJieqorNleoCFQAAAAAdAAAAABAI',]),
-                CardFactory.actions([
-                    {
-                        type: 'openUrl',
-                        title: 'view more',
-                        value: 'https://docs.microsoft.com/en-us/azure/bot-service/'
-                    }
-                ])
-            )
+    verification(){
+        return CardFactory.adaptiveCard(Verification)
+    }
+
+    proceesubmit(session,value){
+        session.send(JSON.stringify(value))
+    }
+
+    // products(char_value){
+    //     console.log('data')
+    //     console.log(char_value)
+    //     Products.find({type:char_value},function(err,doc){
+    //         if(err) throw err;
+    //         console.log(doc)
+    //         console.log(doc[0].name)
+    //         console.log(doc[0]['name'])
+    //         return CardFactory.heroCard(+
+    //             'Bot',
+    //             CardFactory.images(['https://www.cleverfiles.com/howto/wp-content/uploads/2018/03/minion.jpg']),
+    //             CardFactory.actions([
+    //                 {
+    //                     type: 'openUrl',
+    //                     title: 'view more',
+    //                     value: 'https://docs.microsoft.com/en-us/azure/bot-service/'
+    //                 }
+    //             ])
+    //         )
             
-        })
+    //     })
 
-    }
+    // }
 
-    card(){
+    card(data){
+        console.log(data.name)
         return CardFactory.heroCard(
-            'Bot',
-            CardFactory.images(['https://www.google.com/url?sa=i&url=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fdawn&psig=AOvVaw2MhJhoCJxYLXoaXdA4FltB&ust=1592921482084000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCJieqorNleoCFQAAAAAdAAAAABAI',]),
+            data.name,
+            CardFactory.images(['https://www.cleverfiles.com/howto/wp-content/uploads/2018/03/minion.jpg',]),
             CardFactory.actions([
                 {
                     type: 'openUrl',

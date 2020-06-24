@@ -5,17 +5,30 @@
     "body": [
       {
         "type": "Input.Text",
-        "id": "id_text"
+        "id": "name",
+        "value": "Signup"
+      },
+
+      {
+        "type": "Input.Text",
+        "id": "email",
+        "placeholder": "Enter your email id"
+      },
+      {
+        "type": "Input.Text",
+        "id": "password",
+        "placeholder": "Enter your password"
+      },
+      {
+        "type": "Input.Text",
+        "id": "confirm_password",
+        "placeholder": "confirm your password"
       }
     ],
     "actions": [
       {
         "type": "Action.Submit",
-        "title": "Submit",
-        "data": {
-          "prop1": true,
-          "prop2": []
-        }
+        "title": "Submit"
       }
     ]
   }

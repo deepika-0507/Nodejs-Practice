@@ -6,15 +6,12 @@
       {
         "type": "Input.Text",
         "id": "name",
-        "value": "Login"
+        "value": "verification"
       },
+      
       {
         "type": "Input.Text",
-        "id": "email"
-      },
-      {
-        "type": "Input.Text",
-        "id": "password"
+        "id": "code"
       }
     ],
     "actions": [
