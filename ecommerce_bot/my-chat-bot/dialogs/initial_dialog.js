@@ -9,11 +9,14 @@ const Products = require('../models/products');
 const Verification = require('../adaptivecards/verification.json');
 var otpGenerator = require('otp-generator');
 var nodemailer = require('nodemailer');
+const User_info = require('../models/user_info');
 
 const MAIN_WATERFALL_DIALOG = 'WATERFALL_DIALOG';
 const Account = 'NAME_PROMPT';
 const confirm = 'CHOICE_PROMPT';
 var verification_code;
+var user_details;
+var login_details;
 
 class MainDialog extends ComponentDialog {
     constructor() {
@@ -84,29 +87,38 @@ class MainDialog extends ComponentDialog {
     async detailsusers(step){
         console.log(step.context._activity.value)
         if(step.context._activity.value.name === 'Signup'){
-            verification_code=otpGenerator.generate(6, { upperCase: false, specialChars: false });
-            console.log(verification_code)
-            var transporter = nodemailer.createTransport({ service: "gmail", auth: { user: 'wandermate.help@gmail.com', pass: 'wandermate123' } });
-            var mailOptions = { from: 'wandermate.help@gmail.com', to: step.context._activity.value.email, subject: 'Account Verification Token',
-            html : `Hello,<br> Your Verification Code for email verification.<br><b>${verification_code}</b>`,}
+            if(step.context._activity.value.password === step.context._activity.value.confirm_password){
 
-            transporter.sendMail(mailOptions, function (err) {
-                if (err) {
-                     console.log(err);
+                user_details=step.context._activity.value;
+                verification_code=otpGenerator.generate(6, { upperCase: false, specialChars: false });
+                console.log(verification_code)
+                var transporter = nodemailer.createTransport({ service: "gmail", auth: { user: 'wandermate.help@gmail.com', pass: 'wandermate123' } });
+                var mailOptions = { from: 'wandermate.help@gmail.com', to: step.context._activity.value.email, subject: 'Account Verification Token',
+                html : `Hello,<br> Your Verification Code for email verification.<br><b>${verification_code}</b>`,}
+
+                transporter.sendMail(mailOptions, function (err) {
+                    if (err) {
+                        console.log(err);
+                        }
+                    else{
+                        console.log('mail sent');
                     }
-                 else{
-                     console.log('mail sent');
-                 }
-            });
+                });
 
-            await step.context.sendActivity({attachments:[this.verification()]});
-            console.log(step.context._activity.value)
-            return Dialog.EndOfTurn;
+                await step.context.sendActivity({attachments:[this.verification()]});
+                console.log(step.context._activity.value)
+                return Dialog.EndOfTurn;
+            }
+            else{
+                // await step.prompt(Account,`password annd confirm password didn't match`);
+                return await step.endDialog(); 
+
+            }
             
-
         }
         else{
-            await step.prompt(Account,'Succesfully logged in')
+            login_details = step.context._activity.value;
+            // await step.prompt(Account,'Succesfully logged in')
             return step.next();
         }
 
@@ -114,27 +126,56 @@ class MainDialog extends ComponentDialog {
 
     }
 
-    // async detailsverification(step){
-    //     console.log('prompt')
-    //     return await step.prompt(Account,'name');
-    // }
+    
 
     async detailsverification(step){
         console.log(step.context)
-        if(step.context._activity.value.name==='verification'){
+        if(step.context._activity.value.name === 'verification'){
             if(step.context._activity.value.code === verification_code){
+                var user_detail = new User_info()
+                user_detail.email=user_details.email,
+                user_detail.password=user_details.password,
+                
+                await user_detail.save((err,docs)=>{
+                    if(err) throw err;
+                    console.log(docs)
+                    console.log('1')
+                })
+                
                 await step.prompt(Account,'Succesfully Signed in')
+                console.log('2')
                 return step.next();
             }
             else{
                 // await step.context.sendActivity({ attachments: [this.signup()] });
                 // return Dialog.EndOfTurn;
-                return await step.retryPrompt()
+                // await step.prompt(Account,`verification code invalid`);
+                return await step.endDialog(); 
             }
         }
         else{
-            return step.next()
-
+            var x;
+            console.log(login_details.password)
+            await User_info.find({email:login_details.email},function(err,docs){
+                console.log(docs[0].password)
+                if(err) throw err;
+                if(docs[0].password === login_details.password){
+                    console.log('valid')
+                    x='valid';
+                    
+                }
+                else{
+                    console.log('invalid')
+                    x='invalid';
+                }
+            })
+            if(x =='invalid'){
+                return await step.endDialog();
+            }
+            else{
+                return step.next();
+                
+            }
         }
     }
 
@@ -220,29 +261,7 @@ class MainDialog extends ComponentDialog {
         session.send(JSON.stringify(value))
     }
 
-    // products(char_value){
-    //     console.log('data')
-    //     console.log(char_value)
-    //     Products.find({type:char_value},function(err,doc){
-    //         if(err) throw err;
-    //         console.log(doc)
-    //         console.log(doc[0].name)
-    //         console.log(doc[0]['name'])
-    //         return CardFactory.heroCard(+
-    //             'Bot',
-    //             CardFactory.images(['https://www.cleverfiles.com/howto/wp-content/uploads/2018/03/minion.jpg']),
-    //             CardFactory.actions([
-    //                 {
-    //                     type: 'openUrl',
-    //                     title: 'view more',
-    //                     value: 'https://docs.microsoft.com/en-us/azure/bot-service/'
-    //                 }
-    //             ])
-    //         )
-            
-    //     })
 
-    // }
 
     card(data){
         console.log(data.name)
@@ -251,9 +270,9 @@ class MainDialog extends ComponentDialog {
             CardFactory.images(['https://www.cleverfiles.com/howto/wp-content/uploads/2018/03/minion.jpg',]),
             CardFactory.actions([
                 {
-                    type: 'openUrl',
-                    title: 'view more',
-                    value: 'https://docs.microsoft.com/en-us/azure/bot-service/'
+                    type: 'ImBack',
+                    title: 'Book now',
+                    value: 'Yes'
                 }
             ])
         )
