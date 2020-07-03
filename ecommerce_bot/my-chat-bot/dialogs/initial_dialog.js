@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { AttachmentLayoutTypes, CardFactory,UniversalBot,ActionTypes,ActivityTypes,dialog } = require('botbuilder');
+const { AttachmentLayoutTypes, CardFactory,UniversalBot,ActionTypes,ActivityTypes,dialog,MessageFactory } = require('botbuilder');
 const {  ComponentDialog, DialogSet, DialogTurnStatus, WaterfallDialog, TextPrompt, ConfirmPrompt, Dialog } = require('botbuilder-dialogs');
 const AdaptiveCard = require('../adaptivecards/login_card.json');
 const AdaptiveCard_signup = require('../adaptivecards/signup_card.json');
@@ -10,6 +10,8 @@ const Verification = require('../adaptivecards/verification.json');
 var otpGenerator = require('otp-generator');
 var nodemailer = require('nodemailer');
 const User_info = require('../models/user_info');
+const Order = require('../models/orders');
+const Orders = require('../models/orders');
 
 const MAIN_WATERFALL_DIALOG = 'WATERFALL_DIALOG';
 const Account = 'NAME_PROMPT';
@@ -17,6 +19,8 @@ const confirm = 'CHOICE_PROMPT';
 var verification_code;
 var user_details;
 var login_details;
+var order_details=[];
+var details;
 
 class MainDialog extends ComponentDialog {
     constructor() {
@@ -34,6 +38,10 @@ class MainDialog extends ComponentDialog {
             this.detailsverification.bind(this),
             this.displayoptions.bind(this),
             this.displayproducts.bind(this),
+            this.address.bind(this),
+            this.color.bind(this),
+            this.summary.bind(this),
+            this.confirmation_order.bind(this),
             
 
         ]));
@@ -111,6 +119,8 @@ class MainDialog extends ComponentDialog {
             }
             else{
                 // await step.prompt(Account,`password annd confirm password didn't match`);
+                const reply = MessageFactory.text('Password and confirm password didnot match');
+                await step.context.sendActivity(reply);
                 return await step.endDialog(); 
 
             }
@@ -119,6 +129,7 @@ class MainDialog extends ComponentDialog {
         else{
             login_details = step.context._activity.value;
             // await step.prompt(Account,'Succesfully logged in')
+            
             return step.next();
         }
 
@@ -129,7 +140,7 @@ class MainDialog extends ComponentDialog {
     
 
     async detailsverification(step){
-        console.log(step.context)
+        // console.log(step.context)
         if(step.context._activity.value.name === 'verification'){
             if(step.context._activity.value.code === verification_code){
                 var user_detail = new User_info()
@@ -142,8 +153,10 @@ class MainDialog extends ComponentDialog {
                     console.log('1')
                 })
                 
-                await step.prompt(Account,'Succesfully Signed in')
+                const reply = MessageFactory.text('Succesfully logged in');
+                await step.context.sendActivity(reply);
                 console.log('2')
+                login_details=user_detail
                 return step.next();
             }
             else{
@@ -157,22 +170,42 @@ class MainDialog extends ComponentDialog {
             var x;
             console.log(login_details.password)
             await User_info.find({email:login_details.email},function(err,docs){
-                console.log(docs[0].password)
                 if(err) throw err;
-                if(docs[0].password === login_details.password){
-                    console.log('valid')
-                    x='valid';
+                if(docs.length==0){
                     
+                    x='email_invalid'
+                    
+
                 }
+                
                 else{
-                    console.log('invalid')
-                    x='invalid';
+                    if(docs[0].password === login_details.password){
+                        console.log('valid')
+                        x='valid';
+                        
+                    }
+                    else{
+                        console.log('invalid')
+                        x='invalid';
+                    }
+
                 }
+                
             })
             if(x =='invalid'){
+                const reply = MessageFactory.text('invalid details');
+                await step.context.sendActivity(reply);
                 return await step.endDialog();
             }
             else{
+                if(x=='email_invalid'){
+                    const reply = MessageFactory.text('Email Id not found');
+                    await step.context.sendActivity(reply);
+                    return await step.endDialog();
+
+                }
+                const reply = MessageFactory.text('Succesfully logged in');
+                await step.context.sendActivity(reply);
                 return step.next();
                 
             }
@@ -197,7 +230,7 @@ class MainDialog extends ComponentDialog {
         ];
 
         const card = CardFactory.heroCard('', undefined,
-            buttons, { text: 'You can upload an image or select one of the following choices.' });
+            buttons, { text: 'These products are available' });
 
         reply.attachments = [card];
         // console.log(reply)
@@ -232,6 +265,61 @@ class MainDialog extends ComponentDialog {
     }
 
 
+    async address(step){
+        console.log(step.result)
+        order_details.push(step.result)
+        return await step.prompt(Account,'Address')
+    }
+
+    async color(step){
+        console.log(step.result)
+        order_details.push(step.result)
+        return await step.prompt(Account,'Color')
+
+    }
+
+    async summary(step){
+        console.log(step.result)
+        order_details.push(step.result)
+        console.log(order_details)
+        
+        await Products.findById({_id:order_details[0]},function(err,docs){
+            if(err) throw err;
+            details = docs
+            console.log(docs)
+        })
+        console.log(details)
+        const reply = MessageFactory.text('Summary of the order');
+        await step.context.sendActivity(reply);
+        await step.context.sendActivity({attachments:[this.summary_card(order_details,details)]})
+        return await step.prompt(confirm,'Is Everything correct?');
+    }
+
+    async confirmation_order(step){
+        if(step.result){
+            var order = new Orders()
+            order.email = login_details.email,
+            order.product = details._id,
+            order.color = order_details[2],
+            order.address = order_details[1]
+
+            await order.save((err,docs)=>{
+                if(err) throw err;
+                console.log(docs)
+                console.log('details saved')
+            })
+            return await step.prompt(Account,'Your order has placed')
+        }
+        else{
+            return Dialog.endDialog();
+        }
+    }
+
+    async placeorder(step){
+        console.log(step)
+    }
+
+
      
 
 
@@ -257,24 +345,36 @@ class MainDialog extends ComponentDialog {
         return CardFactory.adaptiveCard(Verification)
     }
 
-    proceesubmit(session,value){
-        session.send(JSON.stringify(value))
-    }
 
 
 
     card(data){
-        console.log(data.name)
+        console.log(data.image)
         return CardFactory.heroCard(
             data.name,
-            CardFactory.images(['https://www.cleverfiles.com/howto/wp-content/uploads/2018/03/minion.jpg',]),
+            data.properties,
+            CardFactory.images([data.image,]),
             CardFactory.actions([
                 {
-                    type: 'ImBack',
+                    type: 'imBack',
                     title: 'Book now',
-                    value: 'Yes'
+                    value: `${data._id}`
                 }
             ])
+        )
+    }
+
+    summary_card(data,data_details){
+        console.log(data[0])
+        return CardFactory.heroCard(
+            data_details.name,
+            `${data_details.properties},\n
+            Address:${data[1]},
+            Color:${data[2]},
+            User:${login_details.email}`,
+            
+            CardFactory.images([data_details.image,]),
+            
         )
     }
 

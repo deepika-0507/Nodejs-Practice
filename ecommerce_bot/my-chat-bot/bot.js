@@ -43,7 +43,7 @@ class EcommerceBot extends ActivityHandler {
             const membersAdded = context.activity.membersAdded;
             for (let cnt = 0; cnt < membersAdded.length; cnt++) {
                 if (membersAdded[cnt].id !== context.activity.recipient.id) {
-                    const reply = MessageFactory.text('Welcome to EcommerceBot');
+                    const reply = MessageFactory.text(`Create an account or login if you have an account\n`+`\nSelect the product you wanna buy\n`+`\nStart with 'Hi' \n`+`\nWelcome to EcommerceBot `);
                     await context.sendActivity(reply);
                 }
             }

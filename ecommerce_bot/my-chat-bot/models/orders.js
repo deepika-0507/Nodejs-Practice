@@ -2,25 +2,23 @@ const mongoose = require('mongoose')
 const MongoClient = require('mongodb').MongoClient;
 
 
-const Product = new mongoose.Schema({
-    name:{
+const Order = new mongoose.Schema({
+    email:{
         type:String,
     },
-    type:{
+    product:{
         type:String,
     },
-    Colors:{
+    color:{
         type:String,
     },
-    properties:{
+    address:{
         type:String,
     },
-    image:{
-        type:String,
-    },
+
 
 })
 
-const Products = mongoose.model('Products',Product)
+const Orders = mongoose.model('Orders',Order)
 
-module.exports = Products
+module.exports = Orders
